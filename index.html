@@ -13,7 +13,6 @@
   :root {
     --bg: #ffffff;
     --ink: #111111;
-    --muted: #8a8a8a;
     --gutter: 12px;
     --col: max(25vw, 320px); /* second text column starts here; never closer than the contact block */
     --tile: clamp(64px, 6vw, 110px);
@@ -58,21 +57,17 @@
 
   .tl { top: 0; left: 0; }
   .tc { top: 0; left: var(--col); }
-  .tr { top: 0; right: 0; color: var(--muted); text-align: right; }
   .bl { bottom: 0; left: 0; }
   .bc { bottom: 0; left: var(--col); max-width: 640px; padding-bottom: calc(var(--gutter) + 3.75em); }
 
   .bl p + p, .bl ul + p { margin-top: 1.25em; }
   .bl ul { list-style: none; margin-top: 1.25em; }
 
-  @media (max-width: 1000px) { .tr { display: none; } }
-
   @media (prefers-reduced-motion: reduce) { .tile { animation: none; } }
 
   @media (max-width: 720px) {
     :root { --col: 0px; --tile: 72px; }
     .tc { top: 1.25em; }
-    .tr { display: none; }
     .bc { bottom: auto; top: 3.75em; padding-bottom: var(--gutter); max-width: none; }
   }
 </style>
@@ -84,7 +79,6 @@
 <header>
   <div class="info tl">Désiré</div>
   <div class="info tc">Studio in Montreal, Shipping in North America</div>
-  <div class="info tr">Move to play · Click to clear</div>
 </header>
 
 <footer>
@@ -126,17 +120,24 @@
   // Preload so tiles never pop in blank
   SOURCES.forEach(({ src }) => { new Image().src = src; });
 
-  let index = 0;
-  let last = null;
+  // Gap between drops follows mouse speed, as a multiple of the tile size
+  const GAP_SLOW = 0.45;   // gap when moving slowly
+  const GAP_FAST = 1.8;    // gap when moving fast
+  const SPEED_SLOW = 0.2;  // px/ms at or below which the gap is smallest
+  const SPEED_FAST = 3;    // px/ms at or above which the gap is largest
 
-  // Spacing between drops, as a multiple of the tile size
-  let spacing = 0;
+  let index = 0;
+  let last = null;   // where the last tile was dropped
+  let prev = null;   // previous pointer sample, for measuring speed
+  let speed = 0;     // smoothed px/ms
+
+  let tile = 0;
   const measure = () => {
     const probe = document.createElement('img');
     probe.className = 'tile';
     probe.style.visibility = 'hidden';
     trail.appendChild(probe);
-    spacing = probe.offsetWidth * 0.85;
+    tile = probe.offsetWidth;
     probe.remove();
   };
   measure();
@@ -157,15 +158,27 @@
     if (trail.childElementCount > MAX_TILES) trail.firstElementChild.remove();
   };
 
+  const reset = () => { last = null; prev = null; speed = 0; };
+
   const onMove = (e) => {
-    const x = e.clientX, y = e.clientY;
-    if (!last) { last = { x, y }; drop(x, y); return; }
+    const x = e.clientX, y = e.clientY, t = e.timeStamp;
+    if (!last) { last = { x, y }; prev = { x, y, t }; drop(x, y); return; }
+
+    // Smoothed speed so one jittery event doesn't swing the gap
+    const dt = Math.max(1, t - prev.t);
+    const instant = Math.hypot(x - prev.x, y - prev.y) / dt;
+    const k = 1 - Math.exp(-dt / 60);
+    speed += (instant - speed) * k;
+    prev = { x, y, t };
+
+    const f = Math.min(1, Math.max(0, (speed - SPEED_SLOW) / (SPEED_FAST - SPEED_SLOW)));
+    const spacing = tile * (GAP_SLOW + (GAP_FAST - GAP_SLOW) * f);
 
     const dx = x - last.x, dy = y - last.y;
     const dist = Math.hypot(dx, dy);
     if (dist < spacing) return;
 
-    // Fill gaps on fast movements so the trail stays continuous
+    // Fill in along the path when a single move covers several gaps
     const steps = Math.floor(dist / spacing);
     for (let i = 1; i <= steps; i++) {
       drop(last.x + (dx * i * spacing) / dist, last.y + (dy * i * spacing) / dist);
@@ -178,13 +191,12 @@
 
   const clear = () => {
     trail.replaceChildren();
-    last = null;
+    reset();
   };
 
   addEventListener('pointermove', onMove);
-  addEventListener('pointerdown', (e) => { if (e.pointerType !== 'mouse') last = null; });
-  addEventListener('pointerleave', () => { last = null; });
-  document.addEventListener('mouseleave', () => { last = null; });
+  addEventListener('pointerdown', (e) => { if (e.pointerType !== 'mouse') reset(); });
+  document.addEventListener('mouseleave', reset);
   addEventListener('click', clear);
 })();
 </script>
