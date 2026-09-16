@@ -1,0 +1,192 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Désiré</title>
+<meta name="description" content="Désiré — small-batch silver and enamel jewellery.">
+<link rel="icon" href="trail/pose2.webp" type="image/webp">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #ffffff;
+    --ink: #111111;
+    --muted: #8a8a8a;
+    --gutter: 12px;
+    --col: max(25vw, 320px); /* second text column starts here; never closer than the contact block */
+    --tile: clamp(64px, 6vw, 110px);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body {
+    height: 100%;
+    overflow: hidden;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: "Inter Tight", "Helvetica Neue", Arial, sans-serif;
+    font-size: 15px;
+    line-height: 1.25;
+    letter-spacing: -0.02em;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  body { cursor: crosshair; touch-action: none; -webkit-tap-highlight-color: transparent; user-select: none; -webkit-user-select: none; }
+
+  /* ---------- trail ---------- */
+  #trail { position: fixed; inset: 0; z-index: 1; pointer-events: none; }
+
+  .tile {
+    position: absolute;
+    width: calc(var(--tile) * var(--s, 1));
+    height: calc(var(--tile) * var(--s, 1));
+    object-fit: contain;
+    transform: translate(-50%, -50%);
+    will-change: transform;
+    animation: pop 0.18s ease-out;
+  }
+
+  @keyframes pop {
+    from { transform: translate(-50%, -50%) scale(0.6); }
+    to   { transform: translate(-50%, -50%) scale(1); }
+  }
+
+  /* ---------- text ---------- */
+  .info { position: fixed; z-index: 2; padding: var(--gutter); }
+
+  .tl { top: 0; left: 0; }
+  .tc { top: 0; left: var(--col); }
+  .tr { top: 0; right: 0; color: var(--muted); text-align: right; }
+  .bl { bottom: 0; left: 0; }
+  .bc { bottom: 0; left: var(--col); max-width: 640px; padding-bottom: calc(var(--gutter) + 3.75em); }
+
+  .bl p + p, .bl ul + p { margin-top: 1.25em; }
+  .bl ul { list-style: none; margin-top: 1.25em; }
+
+  @media (max-width: 1000px) { .tr { display: none; } }
+
+  @media (prefers-reduced-motion: reduce) { .tile { animation: none; } }
+
+  @media (max-width: 720px) {
+    :root { --col: 0px; --tile: 72px; }
+    .tc { top: 1.25em; }
+    .tr { display: none; }
+    .bc { bottom: auto; top: 3.75em; padding-bottom: var(--gutter); max-width: none; }
+  }
+</style>
+</head>
+<body>
+
+<div id="trail" aria-hidden="true"></div>
+
+<header>
+  <div class="info tl">Désiré</div>
+  <div class="info tc">Studio in Montreal, Shipping in North America</div>
+  <div class="info tr">Move to play · Click to clear</div>
+</header>
+
+<footer>
+  <div class="info bl">
+    <p>For wholesale, custom pieces + stockists:<br>
+      hello@desire.studio</p>
+    <ul>
+      <li>Shop</li>
+      <li>Instagram</li>
+      <li>TikTok</li>
+    </ul>
+    <p>Studio in Montreal · Shipping in North America</p>
+  </div>
+
+  <div class="info bc">
+    <p>Désiré is an independent jewellery label making small-batch pieces in sterling silver and hand-painted enamel.
+      From the Veevee sprout charms to the liquid-silver Ondulé ring and Lunaire earrings, every design starts as a
+      doodle and ends as something to collect, stack and gift. Playful, a little strange, and made to be worn every day.</p>
+  </div>
+</footer>
+
+<script>
+(() => {
+  // scale is relative to the base tile size
+  const SOURCES = [
+    { src: 'trail/greenveecont.webp' },
+    { src: 'trail/ondule_silver_ring.webp' },
+    { src: 'trail/drawing2.webp' },
+    { src: 'trail/pinkvee2.webp' },
+    { src: 'trail/lunaireearrings2.webp', scale: 0.65 },  // single earring
+    { src: 'trail/pixel-heart.webp', scale: 0.7 },
+    { src: 'trail/justyellowcont.webp' },
+    { src: 'trail/pose2.webp', scale: 0.7 },
+  ];
+  const MAX_TILES = 400;   // oldest tiles are dropped past this to keep things smooth
+
+  const trail = document.getElementById('trail');
+
+  // Preload so tiles never pop in blank
+  SOURCES.forEach(({ src }) => { new Image().src = src; });
+
+  let index = 0;
+  let last = null;
+
+  // Spacing between drops, as a multiple of the tile size
+  let spacing = 0;
+  const measure = () => {
+    const probe = document.createElement('img');
+    probe.className = 'tile';
+    probe.style.visibility = 'hidden';
+    trail.appendChild(probe);
+    spacing = probe.offsetWidth * 0.85;
+    probe.remove();
+  };
+  measure();
+  addEventListener('resize', measure);
+
+  const drop = (x, y) => {
+    const img = document.createElement('img');
+    img.className = 'tile';
+    const { src, scale = 1 } = SOURCES[index];
+    img.src = src;
+    img.style.setProperty('--s', scale);
+    img.alt = '';
+    img.draggable = false;
+    img.style.left = x + 'px';
+    img.style.top = y + 'px';
+    trail.appendChild(img);
+    index = (index + 1) % SOURCES.length;
+    if (trail.childElementCount > MAX_TILES) trail.firstElementChild.remove();
+  };
+
+  const onMove = (e) => {
+    const x = e.clientX, y = e.clientY;
+    if (!last) { last = { x, y }; drop(x, y); return; }
+
+    const dx = x - last.x, dy = y - last.y;
+    const dist = Math.hypot(dx, dy);
+    if (dist < spacing) return;
+
+    // Fill gaps on fast movements so the trail stays continuous
+    const steps = Math.floor(dist / spacing);
+    for (let i = 1; i <= steps; i++) {
+      drop(last.x + (dx * i * spacing) / dist, last.y + (dy * i * spacing) / dist);
+    }
+    last = {
+      x: last.x + (dx * steps * spacing) / dist,
+      y: last.y + (dy * steps * spacing) / dist,
+    };
+  };
+
+  const clear = () => {
+    trail.replaceChildren();
+    last = null;
+  };
+
+  addEventListener('pointermove', onMove);
+  addEventListener('pointerdown', (e) => { if (e.pointerType !== 'mouse') last = null; });
+  addEventListener('pointerleave', () => { last = null; });
+  document.addEventListener('mouseleave', () => { last = null; });
+  addEventListener('click', clear);
+})();
+</script>
+</body>
+</html>
