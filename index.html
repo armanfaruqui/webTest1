@@ -102,16 +102,18 @@
 
 <script>
 (() => {
-  // scale is relative to the base tile size
+  // scale is relative to the base tile size; ordered so no two sprout charms sit next to each other
   const SOURCES = [
     { src: 'trail/greenveecont.webp' },
     { src: 'trail/ondule_silver_ring.webp' },
+    { src: 'trail/pose2.webp', scale: 0.7 },
     { src: 'trail/drawing2.webp' },
+    { src: 'trail/justyellowcont.webp' },
+    { src: 'trail/zineicon.webp' },
     { src: 'trail/pinkvee2.webp' },
     { src: 'trail/lunaireearrings2.webp', scale: 0.65 },  // single earring
+    { src: 'trail/greenanim1.webp', scale: 0.8 },
     { src: 'trail/pixel-heart.webp', scale: 0.7 },
-    { src: 'trail/justyellowcont.webp' },
-    { src: 'trail/pose2.webp', scale: 0.7 },
   ];
   const MAX_TILES = 400;   // oldest tiles are dropped past this to keep things smooth
 
