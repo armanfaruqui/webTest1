@@ -47,6 +47,8 @@
     animation: pop 0.18s ease-out;
   }
 
+  .tile.fading { opacity: 0; transition: opacity 0.4s ease; }
+
   @keyframes pop {
     from { transform: translate(-50%, -50%) scale(0.6); }
     to   { transform: translate(-50%, -50%) scale(1); }
@@ -116,6 +118,8 @@
     { src: 'trail/pixel-heart.webp', scale: 0.7 },
   ];
   const MAX_TILES = 400;   // oldest tiles are dropped past this to keep things smooth
+  const DECAY_MS = 7000;   // touch only: tiles fade out and disappear this long after they appear
+  const FADE_MS = 400;
 
   const trail = document.getElementById('trail');
 
@@ -145,7 +149,7 @@
   measure();
   addEventListener('resize', measure);
 
-  const drop = (x, y) => {
+  const drop = (x, y, decay) => {
     const img = document.createElement('img');
     img.className = 'tile';
     const { src, scale = 1 } = SOURCES[index];
@@ -158,13 +162,18 @@
     trail.appendChild(img);
     index = (index + 1) % SOURCES.length;
     if (trail.childElementCount > MAX_TILES) trail.firstElementChild.remove();
+    if (decay) {
+      setTimeout(() => img.classList.add('fading'), DECAY_MS - FADE_MS);
+      setTimeout(() => img.remove(), DECAY_MS);
+    }
   };
 
   const reset = () => { last = null; prev = null; speed = 0; };
 
   const onMove = (e) => {
     const x = e.clientX, y = e.clientY, t = e.timeStamp;
-    if (!last) { last = { x, y }; prev = { x, y, t }; drop(x, y); return; }
+    const decay = e.pointerType !== 'mouse';
+    if (!last) { last = { x, y }; prev = { x, y, t }; drop(x, y, decay); return; }
 
     // Smoothed speed so one jittery event doesn't swing the gap
     const dt = Math.max(1, t - prev.t);
@@ -183,7 +192,7 @@
     // Fill in along the path when a single move covers several gaps
     const steps = Math.floor(dist / spacing);
     for (let i = 1; i <= steps; i++) {
-      drop(last.x + (dx * i * spacing) / dist, last.y + (dy * i * spacing) / dist);
+      drop(last.x + (dx * i * spacing) / dist, last.y + (dy * i * spacing) / dist, decay);
     }
     last = {
       x: last.x + (dx * steps * spacing) / dist,
